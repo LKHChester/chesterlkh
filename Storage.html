@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fridge Food Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .card-title i {
+            margin-right: 10px;
+            font-size: 1.5rem;
+            color: #3498db;
+        }
+        
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px;
+        }
+        
+        .form-group {
+            flex: 1 0 200px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn-scan {
+            background: #9b59b6;
+        }
+        
+        .btn-scan:hover {
+            background: #8e44ad;
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+        }
+        
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            cursor: pointer;
+        }
+        
+        th:hover {
+            background-color: #e9ecef;
+        }
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .expiry-soon {
+            background-color: #ffdddd !important;
+            animation: pulse 2s infinite;
+        }
+        
+        .expiry-warning {
+            background-color: #fff3cd !important;
+        }
+        
+        @keyframes pulse {
+            0% { background-color: #ffdddd; }
+            50% { background-color: #ffc4c4; }
+            100% { background-color: #ffdddd; }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-good {
+            background-color: #2ecc71;
+        }
+        
+        .status-warning {
+            background-color: #f39c12;
+        }
+        
+        .status-danger {
+            background-color: #e74c3c;
+        }
+        
+        .fridge-zones {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        
+        .zone {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .zone h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        
+        .zone-items {
+            min-height: 100px;
+        }
+        
+        .item {
+            background: white;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 30px 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #bdc3c7;
+        }
+        
+        @media (max-width: 768px) {
+            .form-group {
+                flex: 1 0 100%;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-refrigerator"></i> Fridge Food Manager</h1>
+            <p>Track your food storage, minimize waste, and always know what's in your fridge!</p>
+        </header>
+        
+        <main>
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-barcode"></i> Add New Food Item</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="barcode">Barcode</label>
+                        <input type="text" id="barcode" placeholder="Scan or enter barcode">
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Food Name</label>
+                        <input type="text" id="name" placeholder="Enter food name">
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity</label>
+                        <input type="number" id="quantity" value="1" min="1">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="zone">Storage Zone</label>
+                        <select id="zone">
+                            <option value="Dairy">Dairy Compartment</option>
+                            <option value="Vegetables">Vegetable Drawer</option>
+                            <option value="Meat">Meat Drawer</option>
+                            <option value="Beverages">Beverage Area</option>
+                            <option value="Door">Door Shelves</option>
+                            <option value="Freezer">Freezer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="expiry">Expiry Date</label>
+                        <input type="date" id="expiry">
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category">
+                            <option value="Dairy">Dairy</option>
+                            <option value="Fruits">Fruits</option>
+                            <option value="Vegetables">Vegetables</option>
+                            <option value="Meat">Meat</option>
+                            <option value="Beverages">Beverages</option>
+                            <option value="Condiments">Condiments</option>
+                            <option value="Leftovers">Leftovers</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <button class="btn btn-scan" id="scan-btn">
+                        <i class="fas fa-camera"></i> Scan Barcode
+                    </button>
+                    <button class="btn" id="add-btn">
+                        <i class="fas fa-plus"></i> Add to Fridge
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-list"></i> Food Inventory</h2>
+                <div class="table-container">
+                    <table id="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Food Item <i class="fas fa-sort"></i></th>
+                                <th>Quantity <i class="fas fa-sort"></i></th>
+                                <th>Storage Zone <i class="fas fa-sort"></i></th>
+                                <th>Expiry Date <i class="fas fa-sort"></i></th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-body">
+                            <!-- Items will be added here dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="empty-inventory" class="empty-state">
+                        <i class="fas fa-box-open"></i>
+                        <h3>Your fridge is empty</h3>
+                        <p>Add some food items to get started!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-layer-group"></i> Fridge Zones Overview</h2>
+                <div class="fridge-zones">
+                    <div class="zone">
+                        <h3><i class="fas fa-cheese"></i> Dairy Compartment</h3>
+                        <div class="zone-items" id="dairy-items">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                    </div>
+                    <div class="zone">
+                        <h3><i class="fas fa-carrot"></i> Vegetable Drawer</h3>
+                        <div class="zone-items" id="vegetable-items">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                    </div>
+                    <div class="zone">
+                        <h3><i class="fas fa-drumstick-bite"></i> Meat Drawer</h3>
+                        <div class="zone-items" id="meat-items">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                    </div>
+                    <div class="zone">
+                        <h3><i class="fas fa-wine-bottle"></i> Beverage Area</h3>
+                        <div class="zone-items" id="beverage-items">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="footer">
+            <p>Fridge Food Manager &copy; 2023 | Keep your food fresh and reduce waste!</p>
+        </footer>
+    </div>
+
+    <script>
+        // Sample initial data
+        const foodItems = [
+            { id: 1, name: "Milk", quantity: 1, zone: "Dairy", expiry: "2023-12-05", category: "Dairy" },
+            { id: 2, name: "Eggs", quantity: 12, zone: "Dairy", expiry: "2023-12-15", category: "Dairy" },
+            { id: 3, name: "Chicken Breast", quantity: 2, zone: "Meat", expiry: "2023-12-03", category: "Meat" },
+            { id: 4, name: "Lettuce", quantity: 1, zone: "Vegetables", expiry: "2023-12-10", category: "Vegetables" },
+            { id: 5, name: "Orange Juice", quantity: 1, zone: "Beverages", expiry: "2023-12-25", category: "Beverages" },
+            { id: 6, name: "Yogurt", quantity: 4, zone: "Dairy", expiry: "2023-12-01", category: "Dairy" }
+        ];
+
+        // DOM Elements
+        const inventoryBody = document.getElementById('inventory-body');
+        const addBtn = document.getElementById('add-btn');
+        const scanBtn = document.getElementById('scan-btn');
+        const emptyInventory = document.getElementById('empty-inventory');
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            renderInventoryTable();
+            updateZoneViews();
+            
+            // Set minimum date for expiry to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('expiry').min = today;
+        });
+        
+        // Add button event listener
+        addBtn.addEventListener('click', function() {
+            const name = document.getElementById('name').value;
+            const quantity = document.getElementById('quantity').value;
+            const zone = document.getElementById('zone').value;
+            const expiry = document.getElementById('expiry').value;
+            
+            if (name && quantity && zone && expiry) {
+                const newItem = {
+                    id: Date.now(), // Unique ID
+                    name,
+                    quantity: parseInt(quantity),
+                    zone,
+                    expiry,
+                    category: document.getElementById('category').value
+                };
+                
+                foodItems.push(newItem);
+                renderInventoryTable();
+                updateZoneViews();
+                
+                // Reset form
+                document.getElementById('name').value = '';
+                document.getElementById('quantity').value = '1';
+                document.getElementById('expiry').value = '';
+            } else {
+                alert('Please fill in all fields');
+            }
+        });
+        
+        // Scan button simulation
+        scanBtn.addEventListener('click', function() {
+            // Simulate barcode scanning
+            const barcodes = [
+                { name: "Organic Milk", category: "Dairy" },
+                { name: "Free Range Eggs", category: "Dairy" },
+                { name: "Chicken Breast", category: "Meat" },
+                { name: "Romaine Lettuce", category: "Vegetables" },
+                { name: "Orange", category: "Beverages" },
+                { name: "Greek Yogurt", category: "Dairy" }
+            ];
+            
+            const randomItem = barcodes[Math.floor(Math.random() * barcodes.length)];
+            
+            document.getElementById('name').value = randomItem.name;
+            document.getElementById('category').value = randomItem.category;
+            
+            // Set expiry to 7 days from now
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            const nextWeekFormatted = nextWeek.toISOString().split('T')[0];
+            document.getElementById('expiry').value = nextWeekFormatted;
+            
+            alert(`Scanned: ${randomItem.name}`);
+        });
+        
+        // Render inventory table
+        function renderInventoryTable() {
+            inventoryBody.innerHTML = '';
+            
+            if (foodItems.length === 0) {
+                emptyInventory.style.display = 'block';
+                return;
+            }
+            
+            emptyInventory.style.display = 'none';
+            
+            // Sort by expiry date (soonest first)
+            const sortedItems = [...foodItems].sort((a, b) => 
+                new Date(a.expiry) - new Date(b.expiry)
+            );
+            
+            sortedItems.forEach(item => {
+                const row = document.createElement('tr');
+                
+                // Calculate days until expiry
+                const today = new Date();
+                const expiryDate = new Date(item.expiry);
+                const timeDiff = expiryDate.getTime() - today.getTime();
+                const daysUntilExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                
+                // Apply styling based on expiry
+                if (daysUntilExpiry <= 2) {
+                    row.classList.add('expiry-soon');
+                } else if (daysUntilExpiry <= 5) {
+                    row.classList.add('expiry-warning');
+                }
+                
+                // Status indicator
+                let statusText, statusClass;
+                if (daysUntilExpiry < 0) {
+                    statusText = "Expired!";
+                    statusClass = "status-danger";
+                } else if (daysUntilExpiry <= 2) {
+                    statusText = "Expires soon!";
+                    statusClass = "status-danger";
+                } else if (daysUntilExpiry <= 5) {
+                    statusText = "Use soon";
+                    statusClass = "status-warning";
+                } else {
+                    statusText = "Fresh";
+                    statusClass = "status-good";
+                }
+                
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.zone}</td>
+                    <td>${formatDate(item.expiry)}</td>
+                    <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
+                    <td>
+                        <button class="btn btn-delete" data-id="${item.id}">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                `;
+                
+                inventoryBody.appendChild(row);
+            });
+            
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.btn-delete').forEach(button => {
+                button.addEventListener('click', function() {
+                    const itemId = parseInt(this.getAttribute('data-id'));
+                    deleteItem(itemId);
+                });
+            });
+        }
+        
+        // Update zone views
+        function updateZoneViews() {
+            const zones = {
+                'dairy-items': 'Dairy',
+                'vegetable-items': 'Vegetables',
+                'meat-items': 'Meat',
+                'beverage-items': 'Beverages'
+            };
+            
+            for (const [zoneId, zoneName] of Object.entries(zones)) {
+                const zoneElement = document.getElementById(zoneId);
+                zoneElement.innerHTML = '';
+                
+                const itemsInZone = foodItems.filter(item => item.zone === zoneName);
+                
+                if (itemsInZone.length === 0) {
+                    zoneElement.innerHTML = '<p class="empty-zone">No items in this zone</p>';
+                    continue;
+                }
+                
+                itemsInZone.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'item';
+                    
+                    // Calculate days until expiry
+                    const today = new Date();
+                    const expiryDate = new Date(item.expiry);
+                    const timeDiff = expiryDate.getTime() - today.getTime();
+                    const daysUntilExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                    
+                    let statusClass = "status-good";
+                    if (daysUntilExpiry <= 2) {
+                        statusClass = "status-danger";
+                    } else if (daysUntilExpiry <= 5) {
+                        statusClass = "status-warning";
+                    }
+                    
+                    itemElement.innerHTML = `
+                        <div>
+                            <strong>${item.name}</strong>
+                            <div>Exp: ${formatDate(item.expiry)}</div>
+                        </div>
+                        <div>
+                            <span class="status-indicator ${statusClass}"></span>
+                            <button class="btn btn-delete" data-id="${item.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                    zoneElement.appendChild(itemElement);
+                });
+            }
+            
+            // Add event listeners to delete buttons in zones
+            document.querySelectorAll('.zone .btn-delete').forEach(button => {
+                button.addEventListener('click', function() {
+                    const itemId = parseInt(this.getAttribute('data-id'));
+                    deleteItem(itemId);
+                });
+            });
+        }
+        
+        // Delete an item
+        function deleteItem(itemId) {
+            const index = foodItems.findIndex(item => item.id === itemId);
+            if (index !== -1) {
+                foodItems.splice(index, 1);
+                renderInventoryTable();
+                updateZoneViews();
+            }
+        }
+        
+        // Helper function to format date
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString(undefined, options);
+        }
+    </script>
+</body>
+</html>
