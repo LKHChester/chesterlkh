@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fridge Food Manager</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google API Scripts -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -30,6 +35,7 @@
             padding: 30px 0;
             color: white;
             text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: relative;
         }
         
         header h1 {
@@ -44,6 +50,56 @@
             opacity: 0.9;
         }
         
+        /* New Google Auth & Sync Styles */
+        #login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+        }
+        
+        .login-card {
+            text-align: center;
+            max-width: 450px;
+        }
+        
+        .login-card i.fa-google {
+            margin-right: 10px;
+        }
+
+        #app-section {
+            display: none; /* Hidden until logged in */
+        }
+
+        .user-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .sync-status {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            padding: 8px 15px;
+        }
+        
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
         .card {
             background: white;
             border-radius: 15px;
@@ -117,10 +173,16 @@
             margin-right: 8px;
         }
         
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             background: #2980b9;
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
         }
         
         .btn-scan {
@@ -276,6 +338,12 @@
             .btn {
                 width: 100%;
             }
+
+            .user-controls {
+                position: static;
+                justify-content: center;
+                margin-top: 15px;
+            }
         }
     </style>
 </head>
@@ -284,9 +352,33 @@
         <header>
             <h1><i class="fas fa-refrigerator"></i> Fridge Food Manager</h1>
             <p>Track your food storage, minimize waste, and always know what's in your fridge!</p>
+            
+            <!-- Shows when logged in -->
+            <div id="user-controls" class="user-controls" style="display: none;">
+                <div class="sync-status" id="sync-status">
+                    <i class="fas fa-check-circle"></i> Synced with Drive
+                </div>
+                <button class="btn btn-logout" onclick="handleSignoutClick()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
         </header>
         
-        <main>
+        <!-- Google Login Section -->
+        <div id="login-section">
+            <div class="card login-card">
+                <h2 class="card-title" style="justify-content: center;"><i class="fab fa-google"></i> Google Drive Sync</h2>
+                <p style="margin-bottom: 20px; color: #7f8c8d;">
+                    Login with your Google account to manage your fridge. All data will be safely synced directly to your Google Drive!
+                </p>
+                <button id="authorize_button" class="btn" onclick="handleAuthClick()" disabled>
+                    Loading Google Services...
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Application Section (Hidden by default) -->
+        <main id="app-section">
             <div class="card">
                 <h2 class="card-title"><i class="fas fa-barcode"></i> Add New Food Item</h2>
                 <div class="form-row">
@@ -375,27 +467,19 @@
                 <div class="fridge-zones">
                     <div class="zone">
                         <h3><i class="fas fa-cheese"></i> Dairy Compartment</h3>
-                        <div class="zone-items" id="dairy-items">
-                            <!-- Items will be added here dynamically -->
-                        </div>
+                        <div class="zone-items" id="dairy-items"></div>
                     </div>
                     <div class="zone">
                         <h3><i class="fas fa-carrot"></i> Vegetable Drawer</h3>
-                        <div class="zone-items" id="vegetable-items">
-                            <!-- Items will be added here dynamically -->
-                        </div>
+                        <div class="zone-items" id="vegetable-items"></div>
                     </div>
                     <div class="zone">
                         <h3><i class="fas fa-drumstick-bite"></i> Meat Drawer</h3>
-                        <div class="zone-items" id="meat-items">
-                            <!-- Items will be added here dynamically -->
-                        </div>
+                        <div class="zone-items" id="meat-items"></div>
                     </div>
                     <div class="zone">
                         <h3><i class="fas fa-wine-bottle"></i> Beverage Area</h3>
-                        <div class="zone-items" id="beverage-items">
-                            <!-- Items will be added here dynamically -->
-                        </div>
+                        <div class="zone-items" id="beverage-items"></div>
                     </div>
                 </div>
             </div>
@@ -407,34 +491,205 @@
     </div>
 
     <script>
-        // Sample initial data
-        const foodItems = [
-            { id: 1, name: "Milk", quantity: 1, zone: "Dairy", expiry: "2023-12-05", category: "Dairy" },
-            { id: 2, name: "Eggs", quantity: 12, zone: "Dairy", expiry: "2023-12-15", category: "Dairy" },
-            { id: 3, name: "Chicken Breast", quantity: 2, zone: "Meat", expiry: "2023-12-03", category: "Meat" },
-            { id: 4, name: "Lettuce", quantity: 1, zone: "Vegetables", expiry: "2023-12-10", category: "Vegetables" },
-            { id: 5, name: "Orange Juice", quantity: 1, zone: "Beverages", expiry: "2023-12-25", category: "Beverages" },
-            { id: 6, name: "Yogurt", quantity: 4, zone: "Dairy", expiry: "2023-12-01", category: "Dairy" }
-        ];
+        // ==========================================
+        // GOOGLE API CONFIGURATION (FILL THESE IN)
+        // ==========================================
+        const CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com'; // <-- REPLACE THIS
+        const API_KEY = 'YOUR_API_KEY_HERE'; // <-- REPLACE THIS
+        
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file'; // Scope to only see files created by this app
+        const FILE_NAME = 'fridge_manager_data.json';
+        
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let driveFileId = null;
+
+        // Data Storage
+        let foodItems = [];
 
         // DOM Elements
         const inventoryBody = document.getElementById('inventory-body');
         const addBtn = document.getElementById('add-btn');
         const scanBtn = document.getElementById('scan-btn');
         const emptyInventory = document.getElementById('empty-inventory');
+        const syncStatus = document.getElementById('sync-status');
         
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', function() {
-            renderInventoryTable();
-            updateZoneViews();
+        // 1. Initialize Google API Client (GAPI)
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        // 2. Initialize Google Identity Services (GIS)
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // Defined dynamically in handleAuthClick
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                const authBtn = document.getElementById('authorize_button');
+                authBtn.disabled = false;
+                authBtn.innerHTML = '<i class="fab fa-google"></i> Login with Google';
+            }
+        }
+
+        // 3. Handle Login
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                
+                // Successful Login! Hide login, show app layout, fetch data
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                document.getElementById('user-controls').style.display = 'flex';
+                
+                setSyncStatus('Syncing...', 'fa-sync fa-spin');
+                await loadDataFromDrive();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        // Handle Logout
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                
+                // Reset UI
+                document.getElementById('login-section').style.display = 'flex';
+                document.getElementById('app-section').style.display = 'none';
+                document.getElementById('user-controls').style.display = 'none';
+                foodItems = [];
+                driveFileId = null;
+            }
+        }
+
+        // ==========================================
+        // DRIVE API DATA FUNCTIONS
+        // ==========================================
+
+        async function loadDataFromDrive() {
+            try {
+                // Find file in drive
+                const response = await gapi.client.drive.files.list({
+                    q: `name='${FILE_NAME}' and trashed=false`,
+                    fields: 'files(id, name)',
+                    spaces: 'drive'
+                });
+                
+                const files = response.result.files;
+                if (files && files.length > 0) {
+                    driveFileId = files[0].id;
+                    
+                    // Fetch file content
+                    const fileResponse = await gapi.client.drive.files.get({
+                        fileId: driveFileId,
+                        alt: 'media'
+                    });
+                    
+                    foodItems = typeof fileResponse.result === 'string' 
+                        ? JSON.parse(fileResponse.result) 
+                        : fileResponse.result;
+
+                } else {
+                    // File doesn't exist, use default sample data & save to create it
+                    foodItems = [
+                        { id: 1, name: "Milk", quantity: 1, zone: "Dairy", expiry: getFutureDate(5), category: "Dairy" },
+                        { id: 2, name: "Eggs", quantity: 12, zone: "Dairy", expiry: getFutureDate(15), category: "Dairy" }
+                    ];
+                    await saveDataToDrive(true); 
+                }
+                
+                // Initialize Application display
+                renderInventoryTable();
+                updateZoneViews();
+                setSyncStatus('Synced with Drive', 'fa-check-circle');
+
+                // Set minimum date for expiry to today
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('expiry').min = today;
+                
+            } catch (err) {
+                console.error("Error loading from Drive:", err);
+                setSyncStatus('Sync Error', 'fa-exclamation-triangle');
+                alert("Failed to load data from Google Drive. See console for details.");
+            }
+        }
+
+        async function saveDataToDrive(isNewFile = false) {
+            setSyncStatus('Saving...', 'fa-sync fa-spin');
             
-            // Set minimum date for expiry to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('expiry').min = today;
-        });
+            try {
+                const token = gapi.client.getToken().access_token;
+                const metadata = {
+                    name: FILE_NAME,
+                    mimeType: 'application/json'
+                };
+                const fileContent = JSON.stringify(foodItems);
+                
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+                form.append('file', new Blob([fileContent], {type: 'application/json'}));
+
+                let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+                let method = 'POST';
+
+                if (!isNewFile && driveFileId) {
+                    url = `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`;
+                    method = 'PATCH';
+                }
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {
+                        Authorization: 'Bearer ' + token
+                    },
+                    body: form
+                });
+                
+                const data = await res.json();
+                if (isNewFile) driveFileId = data.id;
+                
+                setSyncStatus('Synced with Drive', 'fa-check-circle');
+            } catch (err) {
+                console.error("Error saving to drive:", err);
+                setSyncStatus('Sync Error', 'fa-exclamation-triangle');
+            }
+        }
+
+        function setSyncStatus(text, iconClass) {
+            syncStatus.innerHTML = `<i class="fas ${iconClass}"></i> ${text}`;
+        }
+
+        // ==========================================
+        // APPLICATION LOGIC (Adapted for Drive Sync)
+        // ==========================================
         
         // Add button event listener
-        addBtn.addEventListener('click', function() {
+        addBtn.addEventListener('click', async function() {
             const name = document.getElementById('name').value;
             const quantity = document.getElementById('quantity').value;
             const zone = document.getElementById('zone').value;
@@ -451,6 +706,8 @@
                 };
                 
                 foodItems.push(newItem);
+                
+                // Update UI immediately for responsiveness
                 renderInventoryTable();
                 updateZoneViews();
                 
@@ -458,6 +715,9 @@
                 document.getElementById('name').value = '';
                 document.getElementById('quantity').value = '1';
                 document.getElementById('expiry').value = '';
+
+                // SYNC TO DRIVE
+                await saveDataToDrive();
             } else {
                 alert('Please fill in all fields');
             }
@@ -481,10 +741,7 @@
             document.getElementById('category').value = randomItem.category;
             
             // Set expiry to 7 days from now
-            const nextWeek = new Date();
-            nextWeek.setDate(nextWeek.getDate() + 7);
-            const nextWeekFormatted = nextWeek.toISOString().split('T')[0];
-            document.getElementById('expiry').value = nextWeekFormatted;
+            document.getElementById('expiry').value = getFutureDate(7);
             
             alert(`Scanned: ${randomItem.name}`);
         });
@@ -510,6 +767,7 @@
                 
                 // Calculate days until expiry
                 const today = new Date();
+                today.setHours(0,0,0,0);
                 const expiryDate = new Date(item.expiry);
                 const timeDiff = expiryDate.getTime() - today.getTime();
                 const daysUntilExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -540,106 +798,4 @@
                 row.innerHTML = `
                     <td>${item.name}</td>
                     <td>${item.quantity}</td>
-                    <td>${item.zone}</td>
-                    <td>${formatDate(item.expiry)}</td>
-                    <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
                     <td>
-                        <button class="btn btn-delete" data-id="${item.id}">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </td>
-                `;
-                
-                inventoryBody.appendChild(row);
-            });
-            
-            // Add event listeners to delete buttons
-            document.querySelectorAll('.btn-delete').forEach(button => {
-                button.addEventListener('click', function() {
-                    const itemId = parseInt(this.getAttribute('data-id'));
-                    deleteItem(itemId);
-                });
-            });
-        }
-        
-        // Update zone views
-        function updateZoneViews() {
-            const zones = {
-                'dairy-items': 'Dairy',
-                'vegetable-items': 'Vegetables',
-                'meat-items': 'Meat',
-                'beverage-items': 'Beverages'
-            };
-            
-            for (const [zoneId, zoneName] of Object.entries(zones)) {
-                const zoneElement = document.getElementById(zoneId);
-                zoneElement.innerHTML = '';
-                
-                const itemsInZone = foodItems.filter(item => item.zone === zoneName);
-                
-                if (itemsInZone.length === 0) {
-                    zoneElement.innerHTML = '<p class="empty-zone">No items in this zone</p>';
-                    continue;
-                }
-                
-                itemsInZone.forEach(item => {
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'item';
-                    
-                    // Calculate days until expiry
-                    const today = new Date();
-                    const expiryDate = new Date(item.expiry);
-                    const timeDiff = expiryDate.getTime() - today.getTime();
-                    const daysUntilExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                    
-                    let statusClass = "status-good";
-                    if (daysUntilExpiry <= 2) {
-                        statusClass = "status-danger";
-                    } else if (daysUntilExpiry <= 5) {
-                        statusClass = "status-warning";
-                    }
-                    
-                    itemElement.innerHTML = `
-                        <div>
-                            <strong>${item.name}</strong>
-                            <div>Exp: ${formatDate(item.expiry)}</div>
-                        </div>
-                        <div>
-                            <span class="status-indicator ${statusClass}"></span>
-                            <button class="btn btn-delete" data-id="${item.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                    
-                    zoneElement.appendChild(itemElement);
-                });
-            }
-            
-            // Add event listeners to delete buttons in zones
-            document.querySelectorAll('.zone .btn-delete').forEach(button => {
-                button.addEventListener('click', function() {
-                    const itemId = parseInt(this.getAttribute('data-id'));
-                    deleteItem(itemId);
-                });
-            });
-        }
-        
-        // Delete an item
-        function deleteItem(itemId) {
-            const index = foodItems.findIndex(item => item.id === itemId);
-            if (index !== -1) {
-                foodItems.splice(index, 1);
-                renderInventoryTable();
-                updateZoneViews();
-            }
-        }
-        
-        // Helper function to format date
-        function formatDate(dateString) {
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return new Date(dateString).toLocaleDateString(undefined, options);
-        }
-    </script>
-</body>
-</html>
